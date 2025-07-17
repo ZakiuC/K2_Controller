@@ -3,7 +3,7 @@
 
 /**
  * @brief 从设备ID字符串中提取数字部分
- * @param deviceId 设备ID字符串，格式为 "device_<number>"
+ * @param deviceId 设备ID字符串，格式为 "<device_name>_<number>"
  * @return int 提取的数字部分，如果格式不正确则返回-1
  */
 int getDeviceIdFromString(const std::string &deviceId)
@@ -15,9 +15,7 @@ int getDeviceIdFromString(const std::string &deviceId)
     if (pos != std::string::npos)
     {
         int number = std::stoi(deviceId.substr(pos + 1)); // 从下划线后面提取数字
+        return number;
     }
-    else
-    {
-        return -1; // 如果没有下划线，返回-1表示无效
-    }
+    return -1; // 如果没有下划线，返回-1表示无效 
 }

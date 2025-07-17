@@ -43,9 +43,9 @@ DeviceManager::DeviceManager() {
  */
 bool DeviceManager::addDevice(const std::string& protocol, const std::string& id, Interface& interface) {
     // 检查 id 是否符合 "device_<number>" 格式
-    std::regex idPattern("^device_\\d+$");
+    std::regex idPattern("^[a-zA-Z]+_\\d+$");
     if (!std::regex_match(id, idPattern)) {
-        LOG_WARNING("设备id [" + id + "] 格式无效，请使用: device_<number>");
+        LOG_WARNING("设备id [" + id + "] 格式无效，请使用: <device_name>_<number>");
         return false;
     }
 

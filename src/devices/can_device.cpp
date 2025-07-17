@@ -16,6 +16,7 @@
  */
 CANDevice::CANDevice(const std::string &id) : Device(id, "CAN"), can_interface_(nullptr)
 {
+    // can_interface_->init();
     LOG_INFO(" 创建 CAN 设备: [" + id + "]");
     heartbeat = std::make_unique<DeviceHeartbeat>(this);
 }
