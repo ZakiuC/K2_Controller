@@ -1,0 +1,3 @@
+# pragma once
+
+#define CAN_DEVICE_HANDLE_RESPONSE_ENABLE 1
