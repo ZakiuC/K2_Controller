@@ -9,8 +9,8 @@
 #include <cstdlib> // For system calls
 #include <sys/select.h>
 
-CANInterface::CANInterface(const std::string &can_interface)
-    : can_interface_(can_interface), sock_(-1) {}
+CANInterface::CANInterface(const std::string &can_interface, bool use_canfd)
+    : can_interface_(can_interface), sock_(-1), use_canfd_(use_canfd) {}
 
 bool CANInterface::init()
 {
@@ -22,6 +22,33 @@ bool CANInterface::init()
     {
         perror("创建 CAN 套接字失败");
         return false;
+    }
+
+    // 如果使用 CAN FD，设置相关选项
+    if (use_canfd_)
+    {
+        int canfd_on = 1;
+        if (setsockopt(sock_, SOL_CAN_RAW, CAN_RAW_FD_FRAMES,
+                       &canfd_on, sizeof(canfd_on)) < 0)
+        {
+            perror("CAN FD enable failed");
+            close(sock_);
+            return false;
+        }
+        std::cout << "CAN FD mode enabled" << std::endl;
+    }
+    else
+    {
+        // 确保禁用 CAN FD 模式，只接收标准 CAN 帧
+        int canfd_off = 0;
+        if (setsockopt(sock_, SOL_CAN_RAW, CAN_RAW_FD_FRAMES,
+                       &canfd_off, sizeof(canfd_off)) < 0)
+        {
+            perror("CAN FD disable failed");
+            close(sock_);
+            return false;
+        }
+        std::cout << "Standard CAN mode enabled" << std::endl;
     }
 
     // 获取接口索引

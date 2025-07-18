@@ -21,12 +21,28 @@ set(SOURCES
     LH08Controller.cpp
 )
 
+# 诊断工具源文件
+set(DIAGNOSTIC_SOURCES
+    can_diagnostic.cpp
+)
+
 # 主程序
 add_executable(test_controller ${SOURCES})
 
+# 诊断工具程序
+add_executable(can_diagnostic ${DIAGNOSTIC_SOURCES})
+
 # 链接系统库
 find_package(Threads REQUIRED)
+<<<<<<< HEAD:tests/new_crawler/CMakeLists.txt
 target_link_libraries(test_controller PRIVATE Threads::Threads)
 
 # 安装目标
 install(TARGETS test_controller DESTINATION bin)
+=======
+target_link_libraries(can PRIVATE Threads::Threads)
+target_link_libraries(can_diagnostic PRIVATE Threads::Threads)
+
+# 安装目标
+install(TARGETS can can_diagnostic DESTINATION bin)
+>>>>>>> origin/main:tests/can/CMakeLists.txt
