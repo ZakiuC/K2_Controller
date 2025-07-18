@@ -21,16 +21,10 @@ set(SOURCES
     LH08Controller.cpp
 )
 
-# 诊断工具源文件
-set(DIAGNOSTIC_SOURCES
-    can_diagnostic.cpp
-)
 
 # 主程序
 add_executable(test_controller ${SOURCES})
 
-# 诊断工具程序
-add_executable(can_diagnostic ${DIAGNOSTIC_SOURCES})
 
 # 链接系统库
 find_package(Threads REQUIRED)
