@@ -14,10 +14,13 @@ CANInterface::CANInterface(const std::string &can_interface)
 
 bool CANInterface::init()
 {
+    system(("sudo ip link set " + can_interface_ + " down").c_str());
+    system(("sudo ip link set " + can_interface_ + " up type can bitrate 1000000 dbitrate 3000000 fd on").c_str());
+
     // 创建 CAN 套接字
     if ((sock_ = socket(PF_CAN, SOCK_RAW, CAN_RAW)) < 0)
     {
-        perror("Socket creation failed");
+        perror("创建 CAN 套接字失败");
         return false;
     }
 
@@ -26,7 +29,7 @@ bool CANInterface::init()
     std::strcpy(ifr.ifr_name, can_interface_.c_str());
     if (ioctl(sock_, SIOCGIFINDEX, &ifr) < 0)
     {
-        perror("I/O control failed");
+        perror("I/O 控制失败");
         close(sock_);
         return false;
     }
@@ -37,7 +40,7 @@ bool CANInterface::init()
     addr.can_ifindex = ifr.ifr_ifindex;
     if (bind(sock_, (struct sockaddr *)&addr, sizeof(addr)))
     {
-        perror("Bind failed");
+        perror("CAN 接口绑定失败");
         close(sock_);
         return false;
     }
@@ -55,7 +58,7 @@ bool CANInterface::send_frame(const struct can_frame &frame)
 {
     if (write(sock_, &frame, sizeof(frame)) != sizeof(frame))
     {
-        perror("CAN frame send failed");
+        perror("CAN 帧发送失败");
         return false;
     }
     return true;
@@ -78,7 +81,7 @@ bool CANInterface::receive_frame(struct can_frame &frame, int timeout_ms)
 
     if (read(sock_, &frame, sizeof(frame)) < 0)
     {
-        perror("CAN frame receive failed");
+        perror("CAN 帧接收失败");
         return false;
     }
     return true;
