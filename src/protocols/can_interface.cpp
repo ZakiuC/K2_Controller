@@ -15,6 +15,9 @@ CANInterface::CANInterface(const std::string &can_interface)
 
 bool CANInterface::init()
 {
+    system(("sudo ip link set " + can_interface_ + " down").c_str());
+    system(("sudo ip link set " + can_interface_ + " up type can bitrate 1000000 dbitrate 3000000 fd on").c_str());
+    
     // 创建 CAN 套接字
     if ((sock_ = socket(PF_CAN, SOCK_RAW, CAN_RAW)) < 0)
     {
