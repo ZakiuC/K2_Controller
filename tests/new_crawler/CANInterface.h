@@ -18,6 +18,11 @@ private:
     std::string can_interface_;
     int sock_;
     bool use_canfd_;
+    
+    // 新增的私有方法
+    bool is_JK_platform();
+    std::string get_platform_info();
+    bool setup_can_interface();
 };
 
 #endif // CAN_INTERFACE_H
