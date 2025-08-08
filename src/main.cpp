@@ -4,6 +4,7 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <chrono>
 
 // 简单的终端控制界面
 void terminalControl(DeviceManager& dm, ControlCenter& cc) {
@@ -12,7 +13,10 @@ void terminalControl(DeviceManager& dm, ControlCenter& cc) {
         std::cout << "1. 设备列表\n";
         std::cout << "2. 发送指令\n";
         std::cout << "3. 切换控制模式\n";
-        std::cout << "4. 退出\n";
+        std::cout << "4. 切换日志输出 [当前: " 
+                  << (Logger::getInstance().isConsoleOutputEnabled() ? "终端+文件" : "仅文件") 
+                  << "]\n";
+        std::cout << "5. 退出\n";
         std::cout << "选择: ";
         
         int choice;
@@ -69,7 +73,14 @@ void terminalControl(DeviceManager& dm, ControlCenter& cc) {
                 cc.setControlMode(mode);
                 break;
             }
-            case 4:
+            case 4: {
+                bool currentState = Logger::getInstance().isConsoleOutputEnabled();
+                Logger::getInstance().setConsoleOutput(!currentState);
+                std::cout << "日志输出已切换为: " 
+                          << (!currentState ? "终端+文件" : "仅文件") << "\n";
+                break;
+            }
+            case 5:
                 return;
             default:
                 std::cout << "无效选择\n";
@@ -86,16 +97,38 @@ int main() {
     DeviceManager deviceManager;
     CANInterface can0("can0");
     
+    // 初始化CAN接口
+    if (!can0.init()) {
+        LOG_ERROR("CAN接口初始化失败");
+        return -1;
+    }
+    LOG_INFO("CAN接口初始化成功");
+    
     // 添加设备
-    deviceManager.addDevice("CAN", "motor_1", can0);
+    deviceManager.addDevice("CAN", "motor_4", can0);
     // deviceManager.addDevice("CAN", "motor2");
     // deviceManager.addDevice("RS232", "relay");
     
     // 连接设备
-    deviceManager.connectDevice("motor_1");
+    deviceManager.connectDevice("motor_4");
     // deviceManager.connectDevice("motor2");
     // deviceManager.connectDevice("relay");
     
+    // 等待设备连接稳定
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // 发送速度控制命令让电机运行
+    int32_t speedControl = 100;
+    uint8_t data[8] = {0}; // 初始化所有元素为0
+    data[4] = static_cast<uint8_t>(speedControl & 0xFF);
+    data[5] = static_cast<uint8_t>((speedControl >> 8) & 0xFF);
+    data[6] = static_cast<uint8_t>((speedControl >> 16) & 0xFF);
+    data[7] = static_cast<uint8_t>((speedControl >> 24) & 0xFF);
+    LOG_INFO("发送速度控制命令: " + std::to_string(speedControl));
+    deviceManager.sendCommand("motor_4", MOTOR_SPEED_FEEDBACK_CONTROL, data);
+    
+    // 等待一段时间让电机开始运行
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     // 创建控制中心
     ControlCenter controlCenter(deviceManager);
     

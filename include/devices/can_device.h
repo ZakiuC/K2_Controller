@@ -92,6 +92,7 @@ public:
         CANInterface* can_iface = dynamic_cast<CANInterface*>(&interface);
         if (can_iface) {
             this->can_interface_ = can_iface;
+            LOG_DEBUG("设备 " + getId() + " 接口为：" + this->can_interface_->interface_());
         } else {
             LOG_ERROR("设备 " + getId() + " 接口类型不匹配，需要CANInterface类型");
         }

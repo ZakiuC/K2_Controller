@@ -17,7 +17,7 @@ CANInterface::CANInterface(const std::string &can_interface, bool use_canfd)
 bool CANInterface::init()
 {
     // 打印平台信息
-    std::cout << "杰克平台检测: " << (is_JK_platform() ? "Yes" : "No") << std::endl;    
+    // std::cout << "杰克平台检测: " << (is_JK_platform() ? "Yes" : "No") << std::endl;    
     // 设置CAN接口
     if (!setup_can_interface()) {
         std::cerr << "Failed to setup CAN interface" << std::endl;
@@ -122,7 +122,6 @@ bool CANInterface::receive_frame(struct can_frame &frame, int timeout_ms)
 }
 
 
-// 检测是否为杰克的板子
 bool CANInterface::is_JK_platform()
 {
     std::ifstream file("/proc/device-tree/model");
@@ -130,24 +129,9 @@ bool CANInterface::is_JK_platform()
         std::string model;
         std::getline(file, model);
         file.close();
-        return model.find("Rockchip") != std::string::npos;
+
+        return model.find("RK3588S") != std::string::npos;
     }
-    
-    // 备用检测方法 - 检查CPU信息
-    std::ifstream cpuinfo("/proc/cpuinfo");
-    if (cpuinfo.is_open()) {
-        std::string line;
-        while (std::getline(cpuinfo, line)) {
-            if (line.find("Rockchip") != std::string::npos || 
-                line.find("RK35") != std::string::npos ||
-                line.find("RK33") != std::string::npos) {
-                cpuinfo.close();
-                return true;
-            }
-        }
-        cpuinfo.close();
-    }
-    
     return false;
 }
 

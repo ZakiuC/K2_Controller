@@ -137,14 +137,14 @@ bool DeviceManager::disconnectDevice(const std::string& id) {
  * @param command 要发送的二进制命令数据
  * @return bool 发送成功返回true，设备不存在或发送失败返回false
  */
-bool DeviceManager::sendCommand(const std::string& id, uint8_t command) {
+bool DeviceManager::sendCommand(const std::string& id, uint8_t command, const uint8_t *data) {
     std::lock_guard<std::mutex> lock(devicesMutex);
     auto it = devices.find(id);
     if (it == devices.end()) {
         LOG_WARNING("设备未找到: [" + id + "]");
         return false;
     }
-    return it->second->sendCommand(command);
+    return it->second->sendCommand(command, data);
 }
 
 /**
@@ -193,6 +193,24 @@ DeviceStatus DeviceManager::getDeviceStatus(const std::string& id) const {
  *       - 例如连接成功、断开连接、发生错误等
  */
 void DeviceManager::handleDeviceStatusChange(const std::string& id, DeviceStatus status) {
-    LOG_INFO("设备状态更新: [" + id + "] -> " + 
-             (status == DeviceStatus::CONNECTED ? "已连接" : "未连接"));
+    std::string statusStr;
+    switch (status) {
+        case DeviceStatus::DISCONNECTED:
+            statusStr = "未连接";
+            break;
+        case DeviceStatus::CONNECTED:
+            statusStr = "已连接";
+            break;
+        case DeviceStatus::ACTIVE:
+            statusStr = "活动中";
+            break;
+        case DeviceStatus::ERROR:
+            statusStr = "错误";
+            break;
+        default:
+            statusStr = "未知状态";
+            break;
+    }
+    
+    LOG_INFO("设备状态更新: [" + id + "] -> " + statusStr);
 }

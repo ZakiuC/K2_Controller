@@ -12,7 +12,7 @@ public:
     bool removeDevice(const std::string& id);
     bool connectDevice(const std::string& id);
     bool disconnectDevice(const std::string& id);
-    bool sendCommand(const std::string& id, uint8_t command);
+    bool sendCommand(const std::string& id, uint8_t command, const uint8_t *data);
     std::vector<std::string> listDevices() const;
     DeviceStatus getDeviceStatus(const std::string& id) const;
 

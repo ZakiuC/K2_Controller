@@ -20,6 +20,8 @@ public:
     static Logger& getInstance();
     void log(LogLevel level, const std::string& message);
     void setLogFile(const std::string& filename);
+    void setConsoleOutput(bool enabled);
+    bool isConsoleOutputEnabled() const;
 
 private:
     Logger();
@@ -29,6 +31,7 @@ private:
 
     std::ofstream logFile;
     std::mutex logMutex;
+    bool consoleOutputEnabled;
 };
 
 // 日志宏定义

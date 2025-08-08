@@ -55,14 +55,14 @@ void ControlCenter::registerCommandHandler(ControlMode mode, CommandHandler hand
  *          - TERMINAL模式：直接通过设备管理器发送
  *          - 其他模式：使用已注册的命令处理器
  */
-void ControlCenter::sendCommand(const std::string& deviceId, uint8_t command) {
+void ControlCenter::sendCommand(const std::string& deviceId, uint8_t command, const uint8_t *data) {
     if (getControlMode() == ControlMode::TERMINAL) {
-        deviceManager.sendCommand(deviceId, command);
+        deviceManager.sendCommand(deviceId, command, data);
     } else {
         std::lock_guard<std::mutex> lock(handlerMutex);
         auto it = commandHandlers.find(getControlMode());
         if (it != commandHandlers.end()) {
-            it->second(deviceId, command);
+            it->second(deviceId, command, data);
         } else {
             LOG_ERROR("当前模式没有命令处理器");
         }
@@ -76,9 +76,9 @@ void ControlCenter::sendCommand(const std::string& deviceId, uint8_t command) {
  * @param command 要发送的命令数据
  * @details 只有当命令来源与当前激活的控制模式一致时，才会执行命令
  */
-void ControlCenter::processIncomingCommand(ControlMode source, const std::string& deviceId, uint8_t command) {
+void ControlCenter::processIncomingCommand(ControlMode source, const std::string& deviceId, uint8_t command, const uint8_t *data) {
     if (source == getControlMode()) {
-        deviceManager.sendCommand(deviceId, command);
+        deviceManager.sendCommand(deviceId, command, data);
     } else {
         LOG_WARNING("接收到来自非激活控制源的命令");
     }

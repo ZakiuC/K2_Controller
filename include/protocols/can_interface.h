@@ -13,6 +13,9 @@ public:
     bool receive_frame(struct can_frame &frame, int timeout_ms = 250);
     ~CANInterface();
 
+    bool is_JK_platform();
+    std::string interface_(){return can_interface_;};
+    
 private:
     std::string can_interface_;
     int sock_;

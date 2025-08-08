@@ -61,6 +61,9 @@
         "bitset": "cpp",
         "regex": "cpp",
         "optional": "cpp",
-        "ranges": "cpp"
+        "ranges": "cpp",
+        "any": "cpp",
+        "forward_list": "cpp",
+        "valarray": "cpp"
     }
 }

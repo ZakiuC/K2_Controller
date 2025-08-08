@@ -16,7 +16,6 @@
  */
 CANDevice::CANDevice(const std::string &id) : Device(id, "CAN"), can_interface_(nullptr)
 {
-    // can_interface_->init();
     LOG_INFO(" 创建 CAN 设备: [" + id + "]");
     heartbeat = std::make_unique<DeviceHeartbeat>(this);
 }
@@ -50,6 +49,7 @@ bool CANDevice::connect()
 bool CANDevice::disconnect()
 {
     LOG_INFO("正在断开 CAN 设备: [" + id + "]");
+    motorCtrl(MOTOR_DISABLE);
     if (heartbeat)
     {
         heartbeat->stop();
@@ -82,7 +82,7 @@ bool CANDevice::sendCommand(uint8_t command, const uint8_t *data, uint8_t respon
     frame.data[0] = command;
     for (int i = 1; i < 8; i++)
     {
-        frame.data[i] = data ? data[i] : 0x00; // 填充数据或默认0
+        frame.data[i] = data ? data[i-1] : 0x00; // 修复索引偏移问题
     }
 
     if (!can_interface_ || !can_interface_->send_frame(frame))
@@ -117,7 +117,7 @@ bool CANDevice::sendCommand(uint8_t command, const uint8_t *data, uint8_t respon
             elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count();
 
             // 检查返回的帧是否正确
-            if (frame.can_id == (0x140 + std::stoi(id)) && frame.data[0] == response_cmd)
+            if (frame.can_id == (0x140 + getDeviceIdFromString(id)) && frame.data[0] == response_cmd)
             {
                 LOG_DEBUG("命令 0x" + std::to_string(response_cmd) + " 接收成功。等待响应时间: " + std::to_string(elapsed_time) + " ms");
 #if CAN_DEVICE_HANDLE_RESPONSE_ENABLE
@@ -251,6 +251,16 @@ bool CANDevice::checkDeviceAlive()
 void CANDevice::handleResponse(const can_frame &frame)
 {
     uint8_t status_code = frame.data[0];
+    
+    // 添加原始数据调试输出
+    std::string raw_data = "原始数据: ";
+    for (int i = 0; i < 8; i++) {
+        char hex_str[4];
+        std::sprintf(hex_str, "%02X ", frame.data[i]);
+        raw_data += hex_str;
+    }
+    LOG_DEBUG(raw_data);
+    
     switch (status_code)
     {
     case MOTOR_GET_STATUS1:
@@ -264,9 +274,9 @@ void CANDevice::handleResponse(const can_frame &frame)
         std::sprintf(errorStateHex, "0x%04X", static_cast<int>(status1_.errorState));
         LOG_DEBUG("读取状态1: \n\t电机温度: " + std::to_string(status1_.temperature) + "℃"
                                                                                        "\n\t母线电压: " +
-                  std::to_string(status1_.voltage) + "V"
+                  std::to_string(status1_.voltage * 0.01) + "V (原始值: " + std::to_string(status1_.voltage) + ")"
                                                      "\n\t母线电流: " +
-                  std::to_string(status1_.current) + "A"
+                  std::to_string(status1_.current * 0.01) + "A (原始值: " + std::to_string(status1_.current) + ")"
                                                      "\n\t电机状态: " +
                   (status1_.motorState == MOTOR_STATE::OFF ? "关闭" : "开启") +
                   "\n\t错误状态: " + errorStateHex);
@@ -279,8 +289,8 @@ void CANDevice::handleResponse(const can_frame &frame)
         status2_.speed = (frame.data[5] << 8) | frame.data[4];
         status2_.encoder = (frame.data[7] << 8) | frame.data[6];
         LOG_DEBUG("读取状态2: \n\t电机温度: " + std::to_string(status2_.temperature) + "℃"
-                                                                                       "\n\t母线电流: " +
-                  std::to_string(status2_.current) + "A"
+                                                                                       "\n\t转矩电流: " +
+                  std::to_string(status2_.current * 66.0 / 4096.0) + "A (原始值: " + std::to_string(status2_.current) + ")"
                                                      "\n\t电机速度: " +
                   std::to_string(status2_.speed) + "dps"
                                                    "\n\t编码器: " +
@@ -295,11 +305,11 @@ void CANDevice::handleResponse(const can_frame &frame)
         status3_.current_C = (frame.data[7] << 8) | frame.data[6];
         LOG_DEBUG("读取状态3: \n\t电机温度: " + std::to_string(status3_.temperature) + "℃"
                                                                                        "\n\t电流A: " +
-                  std::to_string(status3_.current_A) + "A"
+                  std::to_string(status3_.current_A * 66.0 / 4096.0) + "A (原始值: " + std::to_string(status3_.current_A) + ")"
                                                        "\n\t电流B: " +
-                  std::to_string(status3_.current_B) + "A"
+                  std::to_string(status3_.current_B * 66.0 / 4096.0) + "A (原始值: " + std::to_string(status3_.current_B) + ")"
                                                        "\n\t电流C: " +
-                  std::to_string(status3_.current_C) + "A");
+                  std::to_string(status3_.current_C * 66.0 / 4096.0) + "A (原始值: " + std::to_string(status3_.current_C) + ")");
         break;
     case MOTOR_GET_MULTI_POSITION:
         multi_position_ = 0;

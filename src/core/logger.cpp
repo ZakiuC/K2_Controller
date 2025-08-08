@@ -25,8 +25,9 @@ Logger& Logger::getInstance() {
  * @details 私有构造函数，初始化日志系统
  *          - 创建logs目录（如果不存在）
  *          - 设置默认日志文件为logs/device_control.log
+ *          - 默认启用终端输出
  */
-Logger::Logger() {
+Logger::Logger() : consoleOutputEnabled(true) {
     // 创建日志目录（如果不存在）
     std::string logDir = "logs";
     if (!std::filesystem::exists(logDir)) {
@@ -86,8 +87,10 @@ void Logger::log(LogLevel level, const std::string& message) {
     std::ostringstream logEntry;
     logEntry << "[" << timestamp.str() << "] [" << levelStr << "] " << message;
 
-    // 输出到控制台
-    std::cout << logEntry.str() << std::endl;
+    // 根据开关决定是否输出到控制台
+    if (consoleOutputEnabled) {
+        std::cout << logEntry.str() << std::endl;
+    }
 
     // 写入文件
     logFile << logEntry.str() << std::endl;
@@ -127,4 +130,23 @@ void Logger::setLogFile(const std::string& filename) {
             std::cerr << "无法创建或打开日志文件，日志将只输出到控制台" << std::endl;
         }
     }
+}
+
+/**
+ * @brief 设置控制台输出开关
+ * @details 控制日志是否输出到控制台终端
+ * @param enabled true表示启用控制台输出，false表示禁用
+ */
+void Logger::setConsoleOutput(bool enabled) {
+    std::lock_guard<std::mutex> lock(logMutex);
+    consoleOutputEnabled = enabled;
+}
+
+/**
+ * @brief 获取控制台输出状态
+ * @details 返回当前控制台输出是否启用
+ * @return bool true表示控制台输出启用，false表示禁用
+ */
+bool Logger::isConsoleOutputEnabled() const {
+    return consoleOutputEnabled;
 }

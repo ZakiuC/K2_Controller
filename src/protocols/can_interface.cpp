@@ -14,10 +14,29 @@ CANInterface::CANInterface(const std::string &can_interface)
     : can_interface_(can_interface), sock_(-1) {}
 
 bool CANInterface::init()
-{
-    system(("sudo ip link set " + can_interface_ + " down").c_str());
-    system(("sudo ip link set " + can_interface_ + " up type can bitrate 1000000 dbitrate 3000000 fd on").c_str());
+{    
+    std::string up_cmd;
+    // 先关闭接口
+    std::string down_cmd = "sudo ip link set " + can_interface_ + " down";
+    system(down_cmd.c_str());
     
+    if (is_JK_platform()) {
+        // 使用CAN FD配置
+        up_cmd = "sudo ip link set " + can_interface_ + 
+                " up type can bitrate 1000000 dbitrate 3000000 fd on";
+    } else {
+        // 使用标准CAN配置
+        up_cmd = "sudo ip link set " + can_interface_ + 
+                " up type can bitrate 1000000";
+    }
+    
+    std::cout << "执行: " << up_cmd << std::endl;
+    int result = system(up_cmd.c_str());
+    if (result != 0) {
+        LOG_ERROR("CAN 配置失败: " + result);
+        return false;
+    }
+
     // 创建 CAN 套接字
     if ((sock_ = socket(PF_CAN, SOCK_RAW, CAN_RAW)) < 0)
     {
@@ -86,4 +105,18 @@ bool CANInterface::receive_frame(struct can_frame &frame, int timeout_ms)
         return false;
     }
     return true;
+}
+
+bool CANInterface::is_JK_platform()
+{
+    std::ifstream file("/proc/device-tree/model");
+    if (file.is_open()) {
+        std::string model;
+        std::getline(file, model);
+        file.close();
+        
+        // RK3588S通常会在型号中标明"S"后缀
+        return model.find("RK3588S") != std::string::npos;
+    }
+    return false;
 }

@@ -23,7 +23,7 @@ enum class DeviceStatus {
     DISCONNECTED,
     CONNECTED,
     ACTIVE,
-    // OFFLINE,
+    OFFLINE,
     ERROR
 };
 
@@ -65,7 +65,7 @@ public:
             if (statusCallback) {
                 statusCallback(id, newStatus);
             }
-            LOG_INFO("Device " + id + " status changed to " + statusToString(newStatus));
+            // LOG_INFO("Device " + id + " status changed to " + statusToString(newStatus));
         }
     }
     
@@ -154,7 +154,7 @@ public:
                 if (alive) {
                     device->updateStatus(DeviceStatus::ACTIVE);
                 } else {
-                    device->updateStatus(DeviceStatus::ERROR);
+                    device->updateStatus(DeviceStatus::OFFLINE);
                 }
                 
                 std::this_thread::sleep_for(std::chrono::milliseconds(interval));
