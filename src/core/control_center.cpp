@@ -7,13 +7,31 @@
  * @date 2025-07-15
  */
 #include "control_center.h"
+#include "websocket_client.h"
 #include "logger.h"
+
+// WebSocket 命令常量（如果不在头文件中定义）
+#ifndef WS_TRACK_POSITION_CMD
+#define WS_TRACK_POSITION_CMD   "0x0001"
+#define WS_TRACK_SPEED_CMD      "0x0002"
+#define WS_BRUSH_LIFTING_CMD    "0x0003"
+#define WS_EIGHT_SWITCH_CMD     "0x0004"
+#define WS_PUSHFORWARD_CMD      "0x0005"
+#define WS_VIDEO_STREAM_CMD     "0x0006"
+#endif
 
 /**
  * @brief 构造函数，初始化控制中心
  * @param dm 设备管理器的引用
  */
 ControlCenter::ControlCenter(DeviceManager& dm) : deviceManager(dm), currentMode(ControlMode::TERMINAL) {}
+
+/**
+ * @brief 析构函数，清理资源
+ */
+ControlCenter::~ControlCenter() {
+    stopWebSocketClient();
+}
 
 /**
  * @brief 设置控制模式
@@ -96,5 +114,104 @@ std::string ControlCenter::modeToString(ControlMode mode) const {
         case ControlMode::WEBSOCKET: return "WEBSOCKET";
         case ControlMode::MQTT: return "MQTT";
         default: return "未知";
+    }
+}
+
+/**
+ * @brief 启动 WebSocket 客户端
+ * @param server_ip 服务器IP地址
+ * @param port 服务器端口
+ */
+void ControlCenter::startWebSocketClient(const std::string& server_ip, unsigned short port) {
+    if (websocketClient && websocketClient->isConnected()) {
+        LOG_WARNING("WebSocket 客户端已经在运行");
+        return;
+    }
+
+    websocketClient = std::make_unique<WebSocketClient>(server_ip, port, "subscriber");
+    websocketClient->setControlCenter(this);
+    
+    // 注册 WebSocket 命令回调
+    websocketClient->registerCommandCallback([this](const std::string& cmd, const std::vector<std::string>& params) -> std::string {
+        return handleWebSocketCommand(cmd, params);
+    });
+    
+    websocketClient->run();
+    LOG_INFO("WebSocket 客户端已启动，连接到: " + server_ip + ":" + std::to_string(port));
+}
+
+/**
+ * @brief 停止 WebSocket 客户端
+ */
+void ControlCenter::stopWebSocketClient() {
+    if (websocketClient) {
+        websocketClient->stop();
+        websocketClient.reset();
+        LOG_INFO("WebSocket 客户端已停止");
+    }
+}
+
+/**
+ * @brief 检查 WebSocket 连接状态
+ * @return true 如果已连接，否则返回 false
+ */
+bool ControlCenter::isWebSocketConnected() const {
+    return websocketClient && websocketClient->isConnected();
+}
+
+/**
+ * @brief 处理 WebSocket 命令
+ * @param cmd 命令字符串
+ * @param params 参数列表
+ * @return 执行结果字符串
+ */
+std::string ControlCenter::handleWebSocketCommand(const std::string& cmd, const std::vector<std::string>& params) {
+    try {
+        // 这里您需要根据实际的设备控制需求来实现具体的命令处理逻辑
+        if (cmd == WS_TRACK_POSITION_CMD) {
+            if (params.size() != 4) {
+                return "履带位置控制参数数量错误，需要4个参数";
+            }
+            // 示例：控制履带电机位置
+            // deviceManager.sendCommand("track_motor", POSITION_CMD, data);
+            return "履带位置控制执行完成";
+        }
+        else if (cmd == WS_TRACK_SPEED_CMD) {
+            if (params.size() != 3) {
+                return "履带速度控制参数数量错误，需要3个参数";
+            }
+            // 示例：控制履带电机速度
+            return "履带速度控制执行完成";
+        }
+        else if (cmd == WS_BRUSH_LIFTING_CMD) {
+            if (params.size() != 2) {
+                return "毛刷升降控制参数数量错误，需要2个参数";
+            }
+            // 示例：控制毛刷升降
+            return "毛刷升降控制执行完成";
+        }
+        else if (cmd == WS_EIGHT_SWITCH_CMD) {
+            if (params.size() != 1) {
+                return "8路继电器控制参数数量错误，需要1个参数";
+            }
+            // 示例：控制8路继电器
+            return "8路继电器控制执行完成";
+        }
+        else if (cmd == WS_PUSHFORWARD_CMD) {
+            // 示例：PWM推进电机控制
+            return "PWM推进电机控制执行完成";
+        }
+        else if (cmd == WS_VIDEO_STREAM_CMD) {
+            if (params.size() != 1) {
+                return "摄像头控制参数数量错误，需要1个参数";
+            }
+            // 示例：摄像头控制
+            return "摄像头控制执行完成";
+        }
+        else {
+            return "未知命令: " + cmd;
+        }
+    } catch (const std::exception& e) {
+        return "命令执行异常: " + std::string(e.what());
     }
 }

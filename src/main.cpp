@@ -1,6 +1,7 @@
 #include "control_center.h"
 #include "device_manager.h"
 #include "logger.h"
+#include "command_manager.h"
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -8,6 +9,8 @@
 
 // 简单的终端控制界面
 void terminalControl(DeviceManager& dm, ControlCenter& cc) {
+    CommandManager cmdManager;  // 创建命令管理器
+    
     while (true) {
         std::cout << "\nK2 控制器\n";
         std::cout << "1. 设备列表\n";
@@ -16,7 +19,8 @@ void terminalControl(DeviceManager& dm, ControlCenter& cc) {
         std::cout << "4. 切换日志输出 [当前: " 
                   << (Logger::getInstance().isConsoleOutputEnabled() ? "终端+文件" : "仅文件") 
                   << "]\n";
-        std::cout << "5. 退出\n";
+        std::cout << "5. WebSocket 控制\n";
+        std::cout << "6. 退出\n";
         std::cout << "选择: ";
         
         int choice;
@@ -41,14 +45,37 @@ void terminalControl(DeviceManager& dm, ControlCenter& cc) {
                 break;
             }
             case 2: {
-                std::string deviceId;
-                std::cout << "输入设备id: ";
-                std::cin >> deviceId;
-                
-                // 简化命令输入
-                uint8_t command = 0x00;
-                cc.sendCommand(deviceId, command);
-                std::cout << "命令发送.\n";
+                try {
+                    std::string deviceId;
+                    std::cout << "输入设备id: ";
+                    std::cin >> deviceId;
+                    
+                    // 检查设备是否存在
+                    auto devices = dm.listDevices();
+                    if (std::find(devices.begin(), devices.end(), deviceId) == devices.end()) {
+                        std::cout << "设备 " << deviceId << " 不存在！\n";
+                        break;
+                    }
+                    
+                    // 获取设备类型（这里简化处理，假设所有设备都是CAN类型）
+                    std::string deviceType = "CAN";
+                    
+                    // 让用户选择命令
+                    CommandInfo selectedCmd = cmdManager.selectCommand(deviceType);
+                    
+                    // 获取命令参数
+                    std::vector<uint8_t> data = cmdManager.getCommandParameters(selectedCmd);
+                    
+                    // 发送命令
+                    std::cout << "\n发送命令: " << selectedCmd.name << " (0x" 
+                              << std::hex << static_cast<int>(selectedCmd.command) << std::dec << ")\n";
+                    
+                    cc.sendCommand(deviceId, selectedCmd.command, data.data());
+                    std::cout << "命令发送完成.\n";
+                    
+                } catch (const std::exception& e) {
+                    std::cout << "发送命令时出错: " << e.what() << "\n";
+                }
                 break;
             }
             case 3: {
@@ -80,7 +107,55 @@ void terminalControl(DeviceManager& dm, ControlCenter& cc) {
                           << (!currentState ? "终端+文件" : "仅文件") << "\n";
                 break;
             }
-            case 5:
+            case 5: {
+                std::cout << "WebSocket 控制选项:\n";
+                std::cout << "1. 启动 WebSocket 客户端\n";
+                std::cout << "2. 停止 WebSocket 客户端\n";
+                std::cout << "3. 查看连接状态\n";
+                std::cout << "选择: ";
+                
+                int wsChoice;
+                std::cin >> wsChoice;
+                
+                switch(wsChoice) {
+                    case 1: {
+                        std::string server_ip;
+                        unsigned short port;
+                        
+                        std::cout << "输入服务器IP [默认: 115.190.42.239]: ";
+                        std::cin.ignore();
+                        std::getline(std::cin, server_ip);
+                        if (server_ip.empty()) {
+                            server_ip = "115.190.42.239";
+                        }
+                        
+                        std::cout << "输入端口 [默认: 8080]: ";
+                        std::string portStr;
+                        std::getline(std::cin, portStr);
+                        if (portStr.empty()) {
+                            port = 8080;
+                        } else {
+                            port = static_cast<unsigned short>(std::stoi(portStr));
+                        }
+                        
+                        cc.startWebSocketClient(server_ip, port);
+                        cc.setControlMode(ControlMode::WEBSOCKET);
+                        break;
+                    }
+                    case 2:
+                        cc.stopWebSocketClient();
+                        cc.setControlMode(ControlMode::TERMINAL);
+                        break;
+                    case 3:
+                        std::cout << "WebSocket 连接状态: " 
+                                  << (cc.isWebSocketConnected() ? "已连接" : "未连接") << "\n";
+                        break;
+                    default:
+                        std::cout << "无效选择\n";
+                }
+                break;
+            }
+            case 6:
                 return;
             default:
                 std::cout << "无效选择\n";
