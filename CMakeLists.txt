@@ -15,6 +15,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include/protocols
     ${PROJECT_SOURCE_DIR}/include/devices
     ${PROJECT_SOURCE_DIR}/include/utils
+    ${PROJECT_SOURCE_DIR}/include/remote
     ${PROJECT_SOURCE_DIR}/lib
     ${PROJECT_SOURCE_DIR}/config
 )
@@ -36,9 +37,9 @@ if(ENABLE_REMOTE_CONTROL)
     file(GLOB REMOTE_SOURCES "src/remote/*.cpp")
     target_sources(K2_Controler PRIVATE ${REMOTE_SOURCES})
     
-    # # 查找并链接WebSocket库
-    # find_package(Libwebsockets REQUIRED)
-    # target_link_libraries(K2_Controler PRIVATE websockets)
+    # 查找并链接Boost库 (Beast WebSocket需要)
+    find_package(Boost REQUIRED COMPONENTS system)
+    target_link_libraries(K2_Controler PRIVATE Boost::system)
     
     # # 查找并链接MQTT库
     # find_package(PahoMqttCpp REQUIRED)

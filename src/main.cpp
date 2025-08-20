@@ -1,13 +1,15 @@
 #include "control_center.h"
 #include "device_manager.h"
 #include "logger.h"
+#include "websocket_controller.h"
 #include <iostream>
 #include <thread>
 #include <vector>
 #include <chrono>
+#include <memory>
 
 // 简单的终端控制界面
-void terminalControl(DeviceManager& dm, ControlCenter& cc) {
+void terminalControl(DeviceManager& dm, ControlCenter& cc, std::shared_ptr<WebSocketController> wsController) {
     while (true) {
         std::cout << "\nK2 控制器\n";
         std::cout << "1. 设备列表\n";
@@ -16,7 +18,8 @@ void terminalControl(DeviceManager& dm, ControlCenter& cc) {
         std::cout << "4. 切换日志输出 [当前: " 
                   << (Logger::getInstance().isConsoleOutputEnabled() ? "终端+文件" : "仅文件") 
                   << "]\n";
-        std::cout << "5. 退出\n";
+        std::cout << "5. WebSocket状态\n";
+        std::cout << "6. 退出\n";
         std::cout << "选择: ";
         
         int choice;
@@ -64,7 +67,17 @@ void terminalControl(DeviceManager& dm, ControlCenter& cc) {
                 ControlMode mode;
                 switch(modeChoice) {
                     case 1: mode = ControlMode::TERMINAL; break;
-                    case 2: mode = ControlMode::WEBSOCKET; break;
+                    case 2: 
+                        mode = ControlMode::WEBSOCKET;
+                        // 如果选择WebSocket模式，确保WebSocket控制器正在运行
+                        if (wsController && !wsController->isRunning()) {
+                            std::cout << "启动WebSocket控制器...\n";
+                            if (!wsController->start()) {
+                                std::cout << "WebSocket控制器启动失败！\n";
+                                continue;
+                            }
+                        }
+                        break;
                     case 3: mode = ControlMode::MQTT; break;
                     default:
                         std::cout << "无效选择\n";
@@ -80,7 +93,29 @@ void terminalControl(DeviceManager& dm, ControlCenter& cc) {
                           << (!currentState ? "终端+文件" : "仅文件") << "\n";
                 break;
             }
-            case 5:
+            case 5: {
+                if (wsController) {
+                    std::cout << "WebSocket状态: " 
+                              << (wsController->isRunning() ? "已连接" : "未连接") << "\n";
+                    std::cout << "服务器地址: 115.190.42.239:8080\n";
+                    if (!wsController->isRunning()) {
+                        std::cout << "是否启动WebSocket连接? (y/n): ";
+                        char choice;
+                        std::cin >> choice;
+                        if (choice == 'y' || choice == 'Y') {
+                            if (wsController->start()) {
+                                std::cout << "WebSocket连接已建立\n";
+                            } else {
+                                std::cout << "WebSocket连接失败\n";
+                            }
+                        }
+                    }
+                } else {
+                    std::cout << "WebSocket控制器未初始化\n";
+                }
+                break;
+            }
+            case 6:
                 return;
             default:
                 std::cout << "无效选择\n";
@@ -129,16 +164,22 @@ int main() {
     
     // 等待一段时间让电机开始运行
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    
     // 创建控制中心
     ControlCenter controlCenter(deviceManager);
     
+    // 创建WebSocket控制器
+    auto wsController = std::make_shared<WebSocketController>(deviceManager, controlCenter);
+    
     // 启动终端控制界面
     std::thread terminalThread([&]() {
-        terminalControl(deviceManager, controlCenter);
+        terminalControl(deviceManager, controlCenter, wsController);
     });
     
-    // 这里可以添加WebSocket和MQTT的初始化代码
-    // ...
+    // WebSocket控制器可以选择在启动时自动连接，或通过终端界面手动启动
+    // wsController->start();  // 取消注释以自动启动WebSocket
+    
+    LOG_INFO("K2控制器各模块已初始化完成");
     
     terminalThread.join();
     
